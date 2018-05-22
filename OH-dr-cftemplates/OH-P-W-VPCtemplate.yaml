@@ -1,0 +1,185 @@
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 172.32.0.0/16
+
+  PublicSubnetuse2a:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 172.32.0.0/24
+
+  PublicSubnetuse2b:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.32.101.0/24
+
+  PublicSubnetuse2c:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the third Availability Zone
+    Type: String
+    Default: 172.32.102.0/24
+
+
+Resources:
+    VPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: !Ref VpcCIDR
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        InstanceTenancy: default
+        Tags:
+          - Key: Name
+            Value: !Ref EnvironmentName
+
+    InternetGateway:
+      Type: AWS::EC2::InternetGateway
+      Properties:
+       Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+    InternetGatewayAttachment:
+     Type: AWS::EC2::VPCGatewayAttachment
+     Properties:
+       InternetGatewayId: !Ref InternetGateway
+       VpcId: !Ref VPC
+
+    PublicSubnetEC2use2a:
+        Type: AWS::EC2::Subnet
+        Properties:
+           VpcId: !Ref VPC
+           AvailabilityZone: us-east-2a
+           CidrBlock: !Ref PublicSubnetuse2a
+           MapPublicIpOnLaunch: true
+           Tags:
+            - Key: Name
+              Value: Public Subnet (AZ1)
+
+    PublicSubnetEC2use2b:
+        Type: AWS::EC2::Subnet
+        Properties:
+           VpcId: !Ref VPC
+           AvailabilityZone: us-east-2b
+           CidrBlock: !Ref PublicSubnetuse2b
+           MapPublicIpOnLaunch: true
+           Tags:
+            - Key: Name
+              Value: Public Subnet (AZ2)
+
+    PublicSubnetEC2use2c:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-east-2c
+        CidrBlock: !Ref PublicSubnetuse2c
+        MapPublicIpOnLaunch: true
+        Tags:
+         - Key: Name
+           Value: Public Subnet (AZ2)
+
+    PublicRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties:
+          VpcId: !Ref VPC
+          Tags:
+           - Key: Name
+             Value: Public Routes
+
+    local:
+      Type: AWS::EC2:Route
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        DestinationCidrBlock: 172.30.0.0/16
+
+      local:
+        Type: AWS::EC2:Route
+        Properties:
+          RouteTableId: !Ref PublicRouteTable
+          DestinationCidrBlock: 10.0.0.0/8
+
+
+       PublicRoute:
+        Type: AWS::EC2::Route
+        DependsOn: InternetGatewayAttachment
+        Properties:
+          RouteTableId: !Ref PublicRouteTable
+          DestinationCidrBlock: 0.0.0.0/0
+          GatewayId: !Ref InternetGateway
+
+      VPNRoute:
+        Type: "AWS::EC2::VPNConnectionRoute"
+        Properties:
+          DestinationCidrBlock: 172.16.100.0/24
+          VpnConnectionId: vgw-29846b40
+
+
+       OfficeVPNRoute:
+         Type: AWS::EC2::Route
+         Properties:
+           RouteTableId: !Ref PublicRouteTable
+           DestinationCidrBlock: 172.16.100.0/24
+
+
+
+    PublicSubnet2aRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+         RouteTableId: !Ref PublicRouteTable
+         SubnetId: !Ref PublicSubnetEC2use2a
+
+    PublicSubnet2bRouteTableAssociation:
+       Type: AWS::EC2::SubnetRouteTableAssociation
+       Properties:
+         RouteTableId: !Ref PublicRouteTable
+         SubnetId: !Ref PublicSubnetEC2use2b
+
+    PublicSubnet2cRouteTableAssociation:
+       Type: AWS::EC2::SubnetRouteTableAssociation
+       Properties:
+         RouteTableId: !Ref PublicRouteTable
+         SubnetId: !Ref PublicSubnetEC2use2c
+
+  # SourceSG:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     GroupDescription: SchoolObjects security group
+  # TargetSG:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     GroupDescription: Sample target security group
+  # OutboundRule:
+  #   Type: AWS::EC2::SecurityGroupEgress
+  #   Properties:
+  #     IpProtocol: tcp
+  #     FromPort: '0'
+  #     ToPort: '65535'
+  #     DestinationSecurityGroupId:
+  #       Fn::GetAtt:
+  #       - TargetSG
+  #       - GroupId
+  #     GroupId:
+  #       Fn::GetAtt:
+  #       - SourceSG
+  #       - GroupId
+  # InboundRule:
+  #   Type: AWS::EC2::SecurityGroupIngress
+  #   Properties:
+  #     IpProtocol: tcp
+  #     FromPort: '0'
+  #     ToPort: '65535'
+  #     SourceSecurityGroupId:
+  #       Fn::GetAtt:
+  #       - SourceSG
+  #       - GroupId
+  #     GroupId:
+  #       Fn::GetAtt:
+  #       - TargetSG
+  #       - GroupId

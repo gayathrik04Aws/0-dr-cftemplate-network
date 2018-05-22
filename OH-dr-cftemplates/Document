@@ -1,0 +1,75 @@
+OH-Sofe-prod:
+ID :       vpc-2ebc1c4a | Production
+VPC      : 172.32.0.0/16
+
+
+Subnets:                           CIDR:
+us-east-1b -  subnet-b2d1e899   -   172.30.101.0/24
+us-east-1c -  subnet-edf3049b   -   172.30.102.0/24
+us-east-1d -  subnet-e05d54b9   -   172.30.103.0/24
+us-east-1e -  subnet-e0cd60dd   -   172.30.104.0/24
+us-east-1f -  subnet-ea5e85e5   -   172.30.105.0/24
+
+route tables :
+
+subnet-b2d1e899  - 	rtb-c9fd92ad | Public
+subnet-e05d54b9  -  rtb-c9fd92ad | Public
+subnet-edf3049b  -  rtb-c9fd92ad | Public
+subnet-e0cd60dd  -  rtb-c9fd92ad | Public
+
+RouteTables:
+1) rtb-c9fd92ad | Public:    (used by subnet b,c,d,e)
+2) rtb-67a43703 | Default     (used by subnet f)
+
+
+rtb-c9fd92ad | Public
+Destination                                     Target
+172.30.0.0/16                                   local
+10.0.0.0/8                                      local
+0.0.0.0/0                                       igw-99989bfc
+172.16.100.0/24                                 vgw-29846b40(vpn)
+172.16.100.0/24                                 vgw-29846b40(vpn)
+172.31.0.0/16                                   eni-b6b5c4e7 / i-6aa177f1
+192.168.5.0/24                                  vgw-29846b40(vpn)
+pl-63a5400a (com.amazonaws.us-east-1.s3)        vpce-1a7bb473
+
+-- VPN:
+172.16.100.0/24                                 vgw-29846b40(vpn)
+172.16.100.0/24                                 vgw-29846b40(vpn)
+192.168.5.0/24                                  vgw-29846b40(vpn) using in oregon,So propagated set to yes.
+
+Before we add vpn to our route table,Let's create the VPN resource first
+
+ou'll need to create the following resources:
+
+AWS::EC2::CustomerGateway
+AWS::EC2::VPNGateway
+AWS::EC2::VPCGatewayAttachment (depends on VPC and VPN gateway)
+AWS::EC2::VPNConnection (depends on VPN gateway and customer gateway)
+AWS::EC2::VPNConnectionRoute (depends on VPN connection)
+AWS::EC2::VPNGatewayRoutePropagation (depends on any route tables and VPN gateway attachment)
+I don't have an example handy right now to post here, but if you create the above resources and associate them
+to each other where there are dependencies, you should be all set. For
+the "VPNConnectionRoute" resource, you'll create as many of those as you have routes on the other
+side of your VPN connection which AWS resources need to route to.
+
+
+
+pl-63a5400a (com.amazonaws.us-east-1.s3)        vpce-1a7bb473
+-- Endpoints for s3 bucket
+service name                  VpcID:     EndpointType:
+com.amazonaws.us-east-1.s3     vpc-2ebc1c4a   Gateway
+
+
+Destination                    Target            Status    Propagated
+172.30.0.0/16                local               Active      No
+10.0.0.0/8                    local              Active      No
+172.31.0.0/16       eni-b6b5c4e7 / i-6aa177f1    Active      No
+
+
+
+
+Security group used by sofe-prod :
+
+Group name          GroupID
+schoolobjects        sg-17381671
