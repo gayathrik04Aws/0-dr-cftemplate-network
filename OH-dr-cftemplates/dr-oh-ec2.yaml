@@ -1,0 +1,416 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ImageName:
+    Type: String
+    Description: Enter the name of the AMI.
+
+  ImageId:
+    Type: String
+    Description: Enter the AMI ID.
+    Default: ami-ee112c8b
+      #ami-7d142a18
+
+  KeyName :
+    Type: String
+    Description: Enetr the KeyName
+    Default: eduservers
+
+  InstanceType :
+    Type: String
+    Description: Enter the KeyName
+    Default: t2.micro
+
+  Environment :
+    Type: String
+    Description: Enter the KeyName
+    Default: Prod
+
+  recordset :
+    Description: us-ec2-Loadbalancer
+    Type: String
+    Default : dr-use2-sofe-prod
+
+  PublicSubnetuse2a:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+
+  PublicSubnetuse2b:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+
+  PublicSubnetuse2c:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the third Availability Zone
+    Type: String
+
+  ELBAccountID:
+    Description : Enter the ELB account ID
+    Type: String
+    Default: "033677994240"
+
+  VpcId:
+    Description: Vpc
+    Type: String
+
+  SGSchoolobjectselb:
+    Description : SGSchoolobjectselb
+    Type: String
+
+#Auto Scaling Properties: DesiredSize 3 MinimumSize 3 MaximumSize -9
+  DesiredSize:
+    Type: Number
+    Default: 1
+    Description: Enter the Auto Scaling desired group size.
+
+  MinimumSize:
+    Type: Number
+    Default: 1
+    Description: Enter the Auto Scaling minimum group size.
+
+  MaximumSize:
+    Type: Number
+    Default: 1
+    Description: Enter the AutoScaling maximum group size.
+
+  PeakDesiredSize:
+    Type: Number
+    Default: 1
+    Description: Enter the peak desired group size.
+
+  PeakMinimumSize:
+    Type: Number
+    Default: 1
+    Description: Enter the peak minimum group size.
+
+  PeakMaximumSize:
+    Type: Number
+    Default: 1
+    Description: Enter the peak maximum group size.
+
+  OffPeakDesiredSize:
+    Type: Number
+    Default: 1
+    Description: Enter the off-peak desired group size.
+
+  OffPeakMinimumSize:
+    Type: Number
+    Default: 1
+    Description: Enter the off-peak minimum group size.
+
+  OffPeakMaximumSize:
+    Type: Number
+    Default: 1
+    Description: Enter the off-peak maximum group size.
+
+  LowCpuAlarmThreshold:
+    Type: Number
+    Default: 1
+    Description: Enter the low CPU alarm threshold.
+
+  HighCpuAlarmThreshold:
+    Type: Number
+    Default: 1
+    Description: Enter the high CPU alarm threshold.
+
+  WeekNightScheduledActionRecurrence:
+    Type: String
+    Default: "0 0 * * 2,3,4,5,6"
+    Description: Enter the recurrence for the week-night scheduled action.
+
+  WeekMorningScheduledActionRecurrence:
+    Type: String
+    Default: "0 12 * * 1,2,3,4,5"
+    Description: Enter the recurrence for the week-morning scheduled action.
+
+
+Resources:
+  # MyInstance:
+  #   Type: AWS::EC2::Instance
+  #   Properties
+  #    AvailabilityZone: us-east-2a
+  #    ImageId: ami-67172a02
+  #    InstanceType: t2.micro
+  #     #ImageId: ami-1078e56f   ami-b40f67cb
+  #     #InstanceType: c5.2xlarge
+  #    SecurityGroups:
+  #       - ! ImportValue:${AWS::StackName}-StackSourceSG
+  #       - ! ImportValues:${AWS::StackNmae}-SGVPN
+  #       - ! ImportValues:${AWS::StackNmae}-SGSchoolobjectselb
+  #    SubnetId: !Ref PublicSubnetuse2a
+  #    EbsOptimized: true
+  #    Monitoring:   detailed
+  #    Rootdev:      /dev/sda1
+  #    blockdevice : ! Ref BlockDeviceMapping
+  #    KeyName: eduservers
+  #    PrivateIPAddress: 172.32.103.75
+          #PrivateDNS :
+    # Mappings:
+  # RegionMap:
+  #   us-east-2:
+  #     NotificationArn: "arn:aws:sns:us-east-1:451214215850:NotifySLSGrafana"
+
+  # Adding Bucket to access Elblogs
+  DrLoggingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+     BucketName: "dr55-use2-eduphoria-elb-access-logs-prod"
+     AccessControl: LogDeliveryWrite
+
+  DrLoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+     Bucket: !Ref DrLoggingBucket
+     PolicyDocument:
+        Statement:
+        -
+          Action:
+            - "s3:PutObject"
+          Effect: "Allow"
+          Resource: !Join ["", ["arn:aws:s3:::", !Ref DrLoggingBucket, "/*"]]
+          Principal:
+            AWS: !Ref ELBAccountID
+
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    DependsOn: DrLoggingBucketPolicy
+    Properties:
+      AccessLoggingPolicy:
+        S3BucketName: !Ref DrLoggingBucket
+        S3BucketPrefix: !Ref AWS::StackName
+        Enabled: true
+        EmitInterval: 60
+      ConnectionDrainingPolicy:
+        Enabled: true
+        Timeout: 160
+      ConnectionSettings:
+        IdleTimeout: 1800
+      CrossZone: true
+      HealthCheck:
+        HealthyThreshold: 2
+        UnhealthyThreshold: 6
+        Interval: 30
+        Target: HTTPS:443/eduphoria_webcontrols/healthcheck.aspx
+        Timeout: 10
+      LoadBalancerName: !Ref AWS::StackName
+      Listeners:
+        - LoadBalancerPort: 80
+          InstancePort: 80
+          Protocol: TCP
+        - LoadBalancerPort: 443
+          InstancePort: 443
+          Protocol: TCP
+      Scheme: internet-facing
+      SecurityGroups:
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-SGSchoolobjectselb'
+      Subnets:
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-PublicSubnetEC2use2aID'
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-PublicSubnetEC2use2bID'
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-PublicSubnetEC2use2cID'
+
+    # DNS RECORD FOR ELASTIC LOAD BALANCER
+    #Delete the comments later
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: schoolobjects.com.
+      Name: !Join [".", [!Ref recordset, "schoolobjects.com."]]
+      Comment: CNAME record pointing to ELB.
+      Type: CNAME
+      TTL: 900
+      ResourceRecords:
+        - !GetAtt ElasticLoadBalancer.DNSName
+
+  drIamInstanceprofile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Roles:
+        - dr.NETWebserver
+      InstanceProfileName: dr.NETWebserver
+
+  # LAUNCH CONFIGURATION C:\Program Files\SchoolObjects\PoolConfiguration\PoolConfiguration.xml:
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: true
+      IamInstanceProfile: !GetAtt drIamInstanceprofile.Arn
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-SGSchoolobjectselb'
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-SGVPN'
+        - 'Fn::ImportValue': !Sub  'dr-sofe-prod-1-SourceSG'
+      UserData:
+        Fn::Base64: !Sub |
+          # Run metadata
+          # ssmagent : https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent.html
+          <script> cfn-init.exe -v -s ${AWS::StackId} -r  LaunchConfiguration --region ${AWS::Region} </script>
+          <persist>true</persist>
+          # Install msi
+          $args = @("/i ssmagent.exe /q")
+          start-process msiexec -args $args -wait -passthru
+    Metadata:
+      AWS::CloudFormation::Init:
+       config:
+        files:
+              c:\cfn\cfn-hup.conf:
+                content: !Sub |
+                  [main]
+                  stack=${AWS::StackId}
+                  region=${AWS::Region}
+                  interval=1
+                # mode: "000400"
+                # owner: root
+                # group: root
+              c:\cfn\hooks.d\cfn-auto-reloader.conf:
+                content: !Sub |
+                  [cfn-auto-reloader-hook]
+                  triggers=post.update
+                  path=Resources.Windows.Metadata.AWS::CloudFormation::Init
+                  action=cfn-init.exe -v -s ${AWS::StackId} -r LaunchConfiguration --region ${AWS::Region}
+                  runas=root
+              C:\Program Files\SchoolObjects\PoolConfiguration\PoolConfiguration.xml:
+                content: !Sub |
+                  <?xml version="1.0"?>
+                  -<config>
+                  <Roles>app;task;</Roles>
+                  <Pooling>false</Pooling>
+                  <DatabaseServer>dr-sosecdb-use2test-databasecluster-cf9gxfz7t8dc.cluster-ce4u6i20doiu.us-east-2.rds.amazonaws.com</DatabaseServer>
+                  <DatabaseName>sosec</DatabaseName>
+                  <DatabaseUser>3duR00t</DatabaseUser>
+                  <DatabasePassword>RcwqFgprG7Ont8G05s4EangN</DatabasePassword>
+                  <DataCustomString>False</DataCustomString>
+                  <DatabaseConnection>Database =sosec;Data Source = dr-sosecdb-use2test-databasecluster-cf9gxfz7t8dc.cluster-ce4u6i20doiu.us-east-2.rds.amazonaws.com;User Id = '3duR00t'</DatabaseConnection>
+                  <SettingsV2Migrated>True</SettingsV2Migrated>
+                  <InstalledFontsRight6>True</InstalledFontsRight6>
+                  <MemcachedInstances>0</MemcachedInstances>
+                  <ForceInstallMemcached>True</ForceInstallMemcached>
+                  <ServerId>fc428759-d3c2-4dc7-9060-17ec54111c8b</ServerId>
+                  <RestartedForFonts3>True</RestartedForFonts3>
+                  <Dirty>true</Dirty>
+                  <WaitForUpdateServer>True</WaitForUpdateServer>
+                  <EnableReadSlaves>True</EnableReadSlaves>
+                  <IsAWS>True</IsAWS>
+                  <UpdateBranch>AWSBeta</UpdateBranch>
+                  <LastExpand>6/22/2018 9:28:29 PM</LastExpand>
+                  <SecureDatabasePassword>n/eymi7y7CEi0x/KXsiUa8i6HUvv28VFFBirBrouqCTaAjGfqs2aXLDks2bV79Ki3Sq1wcGOzv5Drrzfh4NmgA==</SecureDatabasePassword>
+                  </config>
+                # mode: '000644'
+                # owner: root
+                # group: root
+        services:
+          windows:
+           cfn-hup:
+             enabled: "true"
+             ensureRunning: "true"
+             files:
+             - "/etc/cfn/cfn-hup.conf"
+             - "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+      # EbsOptimized: true *
+
+  # Test applicationautoscaling-scalingpolicy
+
+    # AUTO SCALING GROUP
+    #
+  DRAutoScalingGroup:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      Cooldown: 30
+      DesiredCapacity: !Ref DesiredSize
+      MinSize: !Ref MinimumSize
+      MaxSize: !Ref MaximumSize
+      HealthCheckGracePeriod: 900
+      HealthCheckType: EC2
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      LoadBalancerNames:
+        - !Ref ElasticLoadBalancer
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+          PropagateAtLaunch: true
+      VPCZoneIdentifier:
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-PublicSubnetEC2use2aID'
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-PublicSubnetEC2use2bID'
+        - 'Fn::ImportValue': !Sub 'dr-sofe-prod-1-PublicSubnetEC2use2cID'
+      # NotificationConfigurations:
+      #   - TopicARN: !FindInMap [RegionMap, !Ref "AWS::Region", NotificationArn]
+      #     NotificationTypes:
+      #       - autoscaling:EC2_INSTANCE_LAUNCH
+      #       - autoscaling:EC2_INSTANCE_TERMINATE
+  #
+  # AUTO SCALING POLICY
+  #
+  DRScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref DRAutoScalingGroup
+      AdjustmentType: ChangeInCapacity
+      Cooldown: 600
+      ScalingAdjustment: 1
+
+  DRScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref DRAutoScalingGroup
+      AdjustmentType: ChangeInCapacity
+      Cooldown: 600
+      ScalingAdjustment: -1
+  #
+  # ALARMS
+  #
+  HighCpuAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmActions:
+        - !Ref DRScaleUpPolicy
+      AlarmDescription: "CPUUtilization >= 75"
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref DRAutoScalingGroup
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: !Ref HighCpuAlarmThreshold
+      Unit: Percent
+      Period: 600
+      EvaluationPeriods: 1
+
+  LowCpuAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmActions:
+        - !Ref DRScaleDownPolicy
+      AlarmDescription: "CPUUtilization < 25"
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref DRAutoScalingGroup
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      ComparisonOperator: LessThanThreshold
+      Threshold: !Ref LowCpuAlarmThreshold
+      Unit: Percent
+      Period: 600
+      EvaluationPeriods: 1
+
+
+  #
+  # AUTO SCALING SCHEDULED ACTIONS
+  #
+  WeekNightScheduledAction:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref DRAutoScalingGroup
+      DesiredCapacity: !Ref OffPeakDesiredSize
+      MinSize: !Ref OffPeakMinimumSize
+      MaxSize: !Ref OffPeakMaximumSize
+      Recurrence: !Ref WeekNightScheduledActionRecurrence
+
+  WeekMorningScheduledAction:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref DRAutoScalingGroup
+      DesiredCapacity: !Ref PeakDesiredSize
+      MinSize: !Ref PeakMinimumSize
+      MaxSize: !Ref PeakMaximumSize
+      Recurrence: !Ref WeekMorningScheduledActionRecurrence

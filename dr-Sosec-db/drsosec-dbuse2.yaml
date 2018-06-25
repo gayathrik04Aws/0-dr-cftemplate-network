@@ -1,0 +1,350 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation template for an RDS Aurora cluster.
+Parameters:
+    DatabaseInstanceType:
+        Default: db.r4.large
+        AllowedValues:
+            - db.r4.large
+            - db.t2.small
+            - db.r3.large
+            - db.r3.xlarge
+            - db.r3.2xlarge
+            - db.r3.4xlarge
+            - db.r3.8xlarge
+        Description: The instance type to use for the database.
+        Type: String
+    # DatabasePassword:
+    #     Default: 'testsosecdb'
+    #     AllowedPattern: "[a-zA-Z0-9]+"
+    #     ConstraintDescription: must contain only alphanumeric characters.
+    #     Description: The database admin account password.
+    #     MaxLength: '41'
+    #     MinLength: '8'
+    #     NoEcho: 'true'
+    #     Type: String
+    # DatabaseUsername:
+    #     Default: 'testsosecdb'
+    #     AllowedPattern: "[a-zA-Z0-9]+"
+    #     ConstraintDescription: must contain only alphanumeric characters.
+    #     Description: The database admin account user name.
+    #     MaxLength: '16'
+    #     MinLength: '1'
+    #     Type: String
+    DatabaseBackupRetentionPeriod:
+        Type: String
+        Default: 35
+        Description: The database backup retention period in days.
+    Db2aCIDR:
+      Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+      Type: String
+      Default: 172.32.1.0/24
+
+    Db2bCIDR:
+      Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+      Type: String
+      Default: 172.32.2.0/24
+
+    Db2cCIDR:
+      Description: Please enter the IP range (CIDR notation) for the public subnet in the third Availability Zone
+      Type: String
+      Default: 172.32.4.0/24
+    #Using existing riute table
+    dbPublicRouteTable:
+      Description: Please enter the routetableID
+      Type: String
+    #Created in ec2 network template
+    vpnSecurityGroups:
+      Description: Please enter the routetableID
+      Type: String
+    #Craeted in Ec2 network template
+    sourceSecurityGroups:
+      Description: Please enter the routetableID
+      Type: String
+
+# Metadata:
+#     AWS::CloudFormation::Interface:
+#         ParameterGroups:
+#             - Label:
+#                 default: Database Configuration
+#               Parameters:
+#                 - DatabaseInstanceType
+#                 - DatabaseName
+#                 - DatabaseUsername
+#                 - DatabasePassword
+#                 - DatabaseSubnets
+#                 - DatabaseSecurityGroups
+#                 - DatabaseBackupRetentionPeriod
+#         ParameterLabels:
+#             DatabaseInstanceType:
+#                 default: Database Instance Type
+#             DatabasePassword:
+#                 default: Database Password
+#             DatabaseUsername:
+#                 default: Database Username
+#             DatabaseBackupRetentionPeriod:
+#                 default: Database Backup Retention Period
+#             DatabaseSubnets:
+#                 default: Database Subnets
+#             DatabaseSecurityGroups:
+#                 default: Database Security Groups
+Resources:
+    StackAlarmTopic:
+        Type: AWS::SNS::Topic
+        Properties:
+            DisplayName: Stack Alarm Topic
+   # Create Subnets for 3 availability zones
+    DbPublicSubnetuse2a:
+        Type: AWS::EC2::Subnet
+        Properties:
+           VpcId:
+             Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+           AvailabilityZone: us-east-2a
+           CidrBlock: !Ref Db2aCIDR
+           MapPublicIpOnLaunch: true
+           Tags:
+            - Key: Name
+              Value: Db2use2a-Public Subnet (AZ1)
+
+    DbPublicSubnetuse2b:
+        Type: AWS::EC2::Subnet
+        Properties:
+           VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+           AvailabilityZone: us-east-2b
+           CidrBlock: !Ref Db2bCIDR
+           MapPublicIpOnLaunch: true
+           Tags:
+            - Key: Name
+              Value: Db2use2b-Public Subnet (AZ2)
+
+    DbPublicSubnetuse2c:
+        Type: AWS::EC2::Subnet
+        Properties:
+          VpcId:
+           Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          AvailabilityZone: us-east-2c
+          CidrBlock: !Ref Db2cCIDR
+          MapPublicIpOnLaunch: true
+          Tags:
+           - Key: Name
+             Value: Db2use2c-Public Subnet (AZ3)
+
+  # SubnetRouteTableAssociation
+    dbPublicSubnet2aRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+          RouteTableId:
+           Fn::ImportValue: !Sub 'PublicRouteTable'
+          SubnetId: !Ref DbPublicSubnetuse2a
+
+    dbPublicSubnet2bRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+          RouteTableId:
+            Fn::ImportValue: !Sub 'PublicRouteTable'
+          SubnetId: !Ref DbPublicSubnetuse2b
+
+    dbPublicSubnet2cRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+          RouteTableId:
+            Fn::ImportValue: !Sub 'PublicRouteTable'
+          SubnetId: !Ref DbPublicSubnetuse2c
+
+    myDBSubnetGroup:
+      Type: AWS::RDS::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: myDBSubnetGroup
+        SubnetIds:
+          - !Ref  DbPublicSubnetuse2a
+          - !Ref  DbPublicSubnetuse2b
+          - !Ref  DbPublicSubnetuse2c
+        Tags:
+         - Key: Name
+           Value: DbSubnetGroup
+#Parameter groups
+    DrAllowCustompgAurora:
+        Type: AWS::RDS::DBParameterGroup
+        Properties:
+          Description: CloudFormation Sample Parameter Group
+          Family: aurora5.6
+
+    DrAllowCustomcpgAurora:
+        Type: AWS::RDS::DBClusterParameterGroup
+        Properties:
+          Parameters:
+            character_set_database: "utf32"
+          Description: CloudFormation Sample Parameter Group
+          Family: aurora5.6
+#Option group
+    # DrAllowCustomOptionGroups:
+    #   Type: "AWS::RDS::OptionGroup"
+    #   Properties:
+    #     EngineName: aurora
+    #     MajorEngineVersion: 5.6
+    #     OptionGroupDescription: "option group for aurora 5.6"
+    #     OptionConfigurations:
+    #       - OptionName: String
+    #
+    #     Tags:
+    #       - Resource Tag
+    # create security groups used
+    dbAuroraSG:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: dbsecuritygroup
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          SecurityGroupIngress:
+            - CidrIp: 66.196.202.86/32
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.31.1.0/24
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.31.2.0/24
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.31.3.0/24
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.31.101.0/24
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.31.102.0/24
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.31.103.0/24
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 209.163.175.50/32
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+            - CidrIp: 172.30.0.0/16
+              Description: Custom TCP Rule
+              FromPort: 3389
+              IpProtocol: tcp
+              ToPort: 3389
+    dbElasticcachesg:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Elasticcache
+          GroupName : sgElasticcache
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          SecurityGroupIngress:
+            - CidrIp: 0.0.0.0/0
+              Description: tcp
+              FromPort: 3306
+              IpProtocol: tcp
+              ToPort:   3306
+    dbMarketing:
+        Type: AWS::EC2::SecurityGroup
+        Properties :
+          GroupDescription: Marketing
+          GroupName : sgMarketing
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          SecurityGroupIngress:
+            - CidrIp: 0.0.0.0/0
+              Description: tcp
+              FromPort: 3306
+              IpProtocol: tcp
+              ToPort:   3306
+    # #Cluster
+    DatabaseCluster:
+        Type: AWS::RDS::DBCluster
+        Properties:
+            BackupRetentionPeriod:
+                Ref: DatabaseBackupRetentionPeriod
+            Engine: aurora
+            EngineVersion: '5.6'
+            DBSubnetGroupName:
+                !Ref myDBSubnetGroup
+            # MasterUsername:
+            #     !Ref DatabaseUsername
+            # MasterUserPassword:
+            #     !Ref DatabasePassword
+            PreferredBackupWindow: 07:09-07:39
+            PreferredMaintenanceWindow: mon:8:35-mon:09:05
+            SnapshotIdentifier: 'arn:aws:rds:us-east-2:451214215850:cluster-snapshot:sosec-2018-06-17-07-20'
+            VpcSecurityGroupIds:
+              -  !Ref dbAuroraSG
+              -  !Ref dbElasticcachesg
+              -  !Ref dbMarketing
+            Tags:
+             - Key: Name
+               Value: drsosec
+
+    DatabasePrimaryInstance:
+        Type: AWS::RDS::DBInstance
+        Properties:
+            Engine: aurora
+            DBClusterIdentifier:
+                !Ref DatabaseCluster
+            DBInstanceClass:
+                !Ref DatabaseInstanceType
+            DBSubnetGroupName:
+                !Ref myDBSubnetGroup
+            AutoMinorVersionUpgrade: true
+            AvailabilityZone: us-east-2a
+            Tags:
+             - Key: Name
+               Value: drsosec
+
+    DatabasePrimaryCPUAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: Primary database CPU utilization is over 80%.
+            Namespace: AWS/RDS
+            MetricName: CPUUtilization
+            Unit: Percent
+            Statistic: Average
+            Period: 300
+            EvaluationPeriods: 2
+            Threshold: 80
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            Dimensions:
+                - Name: DBInstanceIdentifier
+                  Value:
+                      Ref: DatabasePrimaryInstance
+            AlarmActions:
+                - Ref: StackAlarmTopic
+            InsufficientDataActions:
+                - Ref: StackAlarmTopic
+    DatabasePrimaryMemoryAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: Primary database freeable memory is under 700MB.
+            Namespace: AWS/RDS
+            MetricName: FreeableMemory
+            Unit: Bytes
+            Statistic: Average
+            Period: 300
+            EvaluationPeriods: 2
+            Threshold: 700000000
+            ComparisonOperator: LessThanOrEqualToThreshold
+            Dimensions:
+                - Name: DBInstanceIdentifier
+                  Value:
+                      Ref: DatabasePrimaryInstance
+            AlarmActions:
+                - Ref: StackAlarmTopic
+            InsufficientDataActions:
+                - Ref: StackAlarmTopic

@@ -1,0 +1,147 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+  Db2aCIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 172.32.1.0/24
+  Db2bCIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.32.2.0/24
+  Db2cCIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the third Availability Zone
+    Type: String
+    Default: 172.32.4.0/24
+  VPC:
+    Description: Please enter the Vpc
+    Type: String
+    Default: ! ImportValues:${AWS::StackNmae}-VPCID
+  dbPublicRouteTable:
+    Description: Please enter the routetableID
+    Type: String
+  vpnSecurityGroups:
+    Description: Please enter the routetableID
+    Type: String
+  sourceSecurityGroups:
+    Description: Please enter the routetableID
+    Type: String
+
+# # Create Subnets for 3 availability zones
+  DbPublicSubnetuse2a:
+      Type: AWS::EC2::Subnet
+      Properties:
+         VpcId: !Ref VPC
+         AvailabilityZone: us-east-2a
+         CidrBlock: !Ref db2aCIDR
+         MapPublicIpOnLaunch: true
+  DbPublicSubnetuse2b:
+      Type: AWS::EC2::Subnet
+      Properties:
+         VpcId: !Ref VPC
+         AvailabilityZone: us-east-2b
+         CidrBlock: !Ref db2bCIDR
+         MapPublicIpOnLaunch: true
+  DbPublicSubnetuse2c:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-east-2c
+        CidrBlock: !Ref db2cCIDR
+        MapPublicIpOnLaunch: true
+# SubnetRouteTableAssociation
+  dbPublicSubnet2aRouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref dbPublicRouteTable
+        SubnetId: !Ref dbPublicSubnetEC2use2a
+
+  dbPublicSubnet2bRouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref dbPublicRouteTable
+        SubnetId: !Ref dbPublicSubnetEC2use2b
+
+  dbPublicSubnet2cRouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref dbPublicRouteTable
+        SubnetId: !Ref dbPublicSubnetEC2use2c
+
+# create security groups used
+  dbAuroraSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: dbsecuritygroup
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - CidrIp: 66.196.202.86/32
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.31.1.0/24
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.31.2.0/24
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.31.3.0/24
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.31.101.0/24
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.31.102.0/24
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.31.103.0/24
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 209.163.175.50/32
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.30.0.0/16
+            Description: Custom TCP Rule
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+  dbElasticcache-sg:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Elasticcache
+        GroupName : sgElasticcache
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - CidrIp: 0.0.0.0/0
+            Description: tcp
+            FromPort: 3306
+            IpProtocol: tcp
+            ToPort:   3306
+  Marketing:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Marketing
+        GroupName : sgMarketing
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - CidrIp: 0.0.0.0/0
+            Description: tcp
+            FromPort: 3306
+            IpProtocol: tcp
+            ToPort:   3306
