@@ -1,0 +1,283 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 172.32.0.0/16
+  PublicSubnetuse2a:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 172.32.0.0/24
+  PublicSubnetuse2b:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.32.101.0/24
+  PublicSubnetuse2c:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the third Availability Zone
+    Type: String
+    Default: 172.32.102.0/24
+
+
+Resources:
+    VPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: !Ref VpcCIDR
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        InstanceTenancy: default
+        Tags:
+          - Key: Name
+            Value: Production
+
+    InternetGateway:
+      Type: AWS::EC2::InternetGateway
+      Properties:
+       Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+# VPCGatewayAttachment
+    InternetGatewayAttachment:
+     Type: AWS::EC2::VPCGatewayAttachment
+     Properties:
+       InternetGatewayId: !Ref InternetGateway
+       VpcId: !Ref VPC
+# Create Subnets for 3 availability zones
+    PublicSubnetEC2use2a:
+        Type: AWS::EC2::Subnet
+        Properties:
+           VpcId: !Ref VPC
+           AvailabilityZone: us-east-2a
+           CidrBlock: !Ref PublicSubnetuse2a
+           MapPublicIpOnLaunch: true
+           Tags:
+            - Key: Name
+              Value: EC2use2a-Public Subnet (AZ1)
+
+    PublicSubnetEC2use2b:
+        Type: AWS::EC2::Subnet
+        Properties:
+           VpcId: !Ref VPC
+           AvailabilityZone: us-east-2b
+           CidrBlock: !Ref PublicSubnetuse2b
+           MapPublicIpOnLaunch: true
+           Tags:
+            - Key: Name
+              Value: EC2use2b-Public Subnet (AZ2)
+
+    PublicSubnetEC2use2c:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref VPC
+        AvailabilityZone: us-east-2c
+        CidrBlock: !Ref PublicSubnetuse2c
+        MapPublicIpOnLaunch: true
+        Tags:
+         - Key: Name
+           Value: EC2use2c-Public Subnet (AZ3)
+# create Route table and attach InternetGateway, VPNGateway to it.
+    PublicRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties:
+          VpcId: !Ref VPC
+          Tags:
+           - Key: Name
+             Value: Public Routes
+
+    PublicRoute:
+        Type: AWS::EC2::Route
+        DependsOn: InternetGatewayAttachment
+        Properties:
+          RouteTableId: !Ref PublicRouteTable
+          DestinationCidrBlock: 0.0.0.0/0
+          GatewayId: !Ref InternetGateway
+
+    VpnRoute:
+       Type: AWS::EC2::Route
+       DependsOn: VpcGatewayAttachment
+       Properties:
+        RouteTableId: !Ref PublicRouteTable
+        DestinationCidrBlock: 172.16.100.0/24
+        GatewayId: !Ref VPNGateway
+# SubnetRouteTableAssociation
+    PublicSubnet2aRouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+         RouteTableId: !Ref PublicRouteTable
+         SubnetId: !Ref PublicSubnetEC2use2a
+
+    PublicSubnet2bRouteTableAssociation:
+       Type: AWS::EC2::SubnetRouteTableAssociation
+       Properties:
+         RouteTableId: !Ref PublicRouteTable
+         SubnetId: !Ref PublicSubnetEC2use2b
+
+    PublicSubnet2cRouteTableAssociation:
+       Type: AWS::EC2::SubnetRouteTableAssociation
+       Properties:
+         RouteTableId: !Ref PublicRouteTable
+         SubnetId: !Ref PublicSubnetEC2use2c
+# create security groups used
+    SourceSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: SchoolObjects FrontEnds
+        GroupName: schoolobjects
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - CidrIp: 52.90.142.24/32
+            Description: VPN
+            FromPort: -1
+            IpProtocol: -1
+            ToPort: -1
+          - CidrIp: 192.168.5.0/24
+            Description: Austin Office
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 172.16.100.0/24
+            Description: Plano Office
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 66.196.202.86/32
+            Description: Plano External IP
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+          - CidrIp: 209.163.175.50/32
+            Description: Austin External IP
+            FromPort: 3389
+            IpProtocol: tcp
+            ToPort: 3389
+
+    SGSchoolobjectselb:
+     Type: AWS::EC2::SecurityGroup
+     Properties:
+        GroupDescription: SchoolObjects Load Balancer
+        GroupName: schoolobjectselb
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - CidrIp: 0.0.0.0/0
+            Description: HTTP
+            FromPort: 80
+            IpProtocol: tcp
+            ToPort: 80
+          - CidrIp: 0.0.0.0/0
+            Description: HTTPS
+            FromPort: 443
+            IpProtocol: tcp
+            ToPort: 443
+    SGVPN:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: VPN instances
+        GroupName : VPN
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - CidrIp: 0.0.0.0/0
+            Description: HTTP
+            FromPort: 80
+            IpProtocol: tcp
+            ToPort:   80
+          - CidrIp: 0.0.0.0/0
+            Description: HTTPS
+            FromPort: 443
+            IpProtocol: tcp
+            ToPort:   443
+
+    CustomerGateway1:
+      Type: AWS::EC2::CustomerGateway
+      Properties:
+       Type: ipsec.1
+       BgpAsn: 65000
+       IpAddress: 209.163.175.50
+       Tags:
+        - Key: Name
+          Value: "Eduphoria Austin"
+
+    CustomerGateway2:
+      Type: AWS::EC2::CustomerGateway
+      Properties:
+        Type: ipsec.1
+        BgpAsn: 65000
+        IpAddress: 66.196.202.86
+        Tags:
+          - Key: Name
+            Value: "Eduphoria Plano"
+
+
+    VPNGateway:
+      Type: AWS::EC2::VPNGateway
+      Properties:
+       AmazonSideAsn: 7224
+       Type: ipsec.1
+
+    VpcGatewayAttachment:
+     Type: AWS::EC2::VPCGatewayAttachment
+     Properties:
+       VpnGatewayId: !Ref VPNGateway
+       VpcId: !Ref VPC
+
+    myVPNConnection:
+      Type: AWS::EC2::VPNConnection
+      Properties:
+        Type: ipsec.1
+        StaticRoutesOnly: true
+        CustomerGatewayId: !Ref CustomerGateway1
+        VpnGatewayId: !Ref VPNGateway
+        Tags:
+         - Key:   Name
+           Value: Eduphoria Austin
+
+    myVPNConnection2:
+      Type: AWS::EC2::VPNConnection
+      Properties:
+        Type: ipsec.1
+        StaticRoutesOnly: true
+        CustomerGatewayId: !Ref CustomerGateway2
+        VpnGatewayId: !Ref VPNGateway
+        Tags:
+         - Key:   Name
+           Value: Eduphoria Plano1
+
+    myVPNGatewayRouteProp:
+       Type: "AWS::EC2::VPNGatewayRoutePropagation"
+       Properties:
+         RouteTableIds:
+           - !Ref PublicRouteTable
+         VpnGatewayId: !Ref VPNGateway
+       DependsOn : VpcGatewayAttachment
+
+    VPNRoute1:
+      Type: AWS::EC2::VPNConnectionRoute
+      Properties:
+        DestinationCidrBlock: 192.168.5.0/24
+        VpnConnectionId: !Ref myVPNConnection
+
+    VPNRoute2:
+       Type: AWS::EC2::VPNConnectionRoute
+       Properties:
+         DestinationCidrBlock: 172.16.100.0/24
+         VpnConnectionId: !Ref myVPNConnection2
+
+# Add Vpc endpoint to give access to s3 in vpc
+# Join appends set of values into a single value.
+
+    S3Endpoint:
+      Type: AWS::EC2::VPCEndpoint
+      Properties:
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+              - Effect: Allow
+                Principal: '*'
+                Action:
+                  - '*'
+                Resource: '*'
+        RouteTableIds:
+            - !Ref PublicRouteTable
+        ServiceName : !Sub 'com.amazonaws.${AWS::Region}.s3'
+        VpcId: !Ref VPC

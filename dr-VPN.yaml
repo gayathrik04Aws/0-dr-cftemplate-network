@@ -1,0 +1,113 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+    Default: drtest
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 172.29.0.0/16
+  PublicSubnetuse2a:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 172.29.0.0/24
+  PublicSubnetuse2b:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.29.101.0/24
+  PublicSubnetuse2c:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the third Availability Zone
+    Type: String
+    Default: 172.29.102.0/24
+
+Resources:
+    CustomerGateway1:
+      Type: AWS::EC2::CustomerGateway
+      Properties:
+       Type: ipsec.1
+       BgpAsn: 65000
+       IpAddress: 209.163.175.50
+       Tags:
+        - Key: Name
+          Value: "Eduphoria Austin"
+
+    CustomerGateway2:
+      Type: AWS::EC2::CustomerGateway
+      Properties:
+        Type: ipsec.1
+        BgpAsn: 65000
+        IpAddress: 66.196.202.86
+        Tags:
+          - Key: Name
+            Value: "Eduphoria Plano"
+
+
+    VPNGateway:
+      Type: AWS::EC2::VPNGateway
+      Properties:
+       # AmazonSideAsn: 7224
+       Type: ipsec.1
+
+    VpcGatewayAttachment:
+     Type: AWS::EC2::VPCGatewayAttachment
+     Properties:
+       VpnGatewayId: !Ref VPNGateway
+       VpcId:
+         Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+
+    myVPNConnection:
+      Type: AWS::EC2::VPNConnection
+      Properties:
+        Type: ipsec.1
+        StaticRoutesOnly: true
+        CustomerGatewayId: !Ref CustomerGateway1
+        VpnGatewayId: !Ref VPNGateway
+        Tags:
+         - Key:   Name
+           Value: Eduphoria Austin
+
+    myVPNConnection2:
+      Type: AWS::EC2::VPNConnection
+      Properties:
+        Type: ipsec.1
+        StaticRoutesOnly: true
+        CustomerGatewayId: !Ref CustomerGateway2
+        VpnGatewayId: !Ref VPNGateway
+        Tags:
+         - Key:   Name
+           Value: Eduphoria Plano1
+#Need to open route propogation for rtb-080e6574a2dec7869 | Public Routes and Nat route table which add vgw routes
+    myVPNGatewayRouteProp:
+       Type: "AWS::EC2::VPNGatewayRoutePropagation"
+       Properties:
+         RouteTableIds:
+           - Fn::ImportValue: !Sub 'PublicRouteTable'
+         VpnGatewayId: !Ref VPNGateway
+       DependsOn : VpcGatewayAttachment
+# Static Routes Austin
+    VPNRoute1:
+      Type: AWS::EC2::VPNConnectionRoute
+      Properties:
+        DestinationCidrBlock: 192.168.5.0/24
+        VpnConnectionId: !Ref myVPNConnection
+#Static Routes Plano
+    VPNRoute2:
+       Type: AWS::EC2::VPNConnectionRoute
+       Properties:
+         DestinationCidrBlock: 172.16.100.0/24
+         VpnConnectionId: !Ref myVPNConnection2
+#NatRoute
+    VpnRoute:
+       Type: AWS::EC2::Route
+       DependsOn: VpcGatewayAttachment
+       Properties:
+        RouteTableId:
+          Fn::ImportValue: !Sub 'PublicRouteTable'
+        DestinationCidrBlock: 172.16.100.0/24
+        GatewayId: !Ref VPNGateway
+Outputs:
+    DrOfficeVPNGateway:
+      Description: school object stack
+      Value: !Ref VPNGateway
+      Export:
+       Name: "dr-sofe-prod-1-VPNGateway"
