@@ -1,0 +1,14 @@
+pipeline {
+    agent any
+    stages {
+        stage ('Notification') {
+            steps {
+            script{
+              def scmvars = checkout scm
+              echo "${scmvars.GIT_BRANCH}"
+                }
+            }
+        }
+    }
+
+}
