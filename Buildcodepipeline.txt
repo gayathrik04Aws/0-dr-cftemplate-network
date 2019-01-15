@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+    triggers{
+     cron('H/2 * * * *')
+    }
+    node
+    {
+      checkout([
+      $class: 'GitSCM',
+      branches: scm.branches,
+      extensions: scm.extensions + [[$class: 'CleanCheckout']],
+      userRemoteConfigs: scm.userRemoteConfigs
+      load "$JENKINS_HOME/.envvars
+      echo BRANCH="${GIT_BRANCH##*/}"
+    ])
+    stages {
+        stage ('build')
+        {
+          awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${GIT_BRANCH}')
+        }
+        stage('test')
+        {
+        }
+        stage('Deploy')
+        {}
+        stage ('Notification') {
+            steps {
+            script{
+              def scmvars = checkout scm
+              echo "${scmvars.GIT_BRANCH}"
+
+            invokeLambda(
+                [
+                awsAccessKeyId:'Administrator',
+                awsRegion:'us-east-1',
+                awsSecretKey:'test',
+                functionName:"ses-prod-sendemails",
+                payload:'{"recipients": ["gayathri@eduphoria.net", "lester@eduphoria.net"], "mailbody": "Check console output at -{$BUILD_URL} to view the results.","subject": "${JOB_NAME}-${BUILD_NUMBER}-' + currentBuild.currentResult + '","filterList": ["develop", "epic-flower-wishes", "epic-analysis-reporting", "epic-3429-eval-attach-document-dimensions", "epic-walkthrough-widget", "epic-online-testing", "epic-test-proctoring","origin/master"], "filterValue": "' + scmvars.GIT_BRANCH +'","sender": "sender@eduphoria.net"}',
+                synchronous:true,
+                useInstanceCredentials:true
+                ]
+                );
+                }
+            }
+        }
+    }
+
+}
