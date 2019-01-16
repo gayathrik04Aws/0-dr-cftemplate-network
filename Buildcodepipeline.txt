@@ -19,9 +19,12 @@ pipeline {
         }
         stage('test')
         {
+           echo 'testing'
         }
         stage('Deploy')
-        {}
+        {
+           echo 'Deploy'
+        }
         stage ('Notification') {
             steps {
             script{
