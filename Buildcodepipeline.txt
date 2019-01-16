@@ -10,8 +10,6 @@ pipeline {
       branches: scm.branches,
       extensions: scm.extensions + [[$class: 'CleanCheckout']],
       userRemoteConfigs: scm.userRemoteConfigs
-      /*load "$JENKINS_HOME/.envvars */
-      echo '${GIT_BRANCH}'
     ])
     stages {
         stage ('build')
