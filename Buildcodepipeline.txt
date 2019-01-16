@@ -1,19 +1,21 @@
 pipeline {
     agent any
     triggers{
-     cron('H/2 * * * *')
+     PollSCM('H/2 * * * *')
     }
-    node
-    {
-      checkout([
-      $class: 'GitSCM',
-      branches: scm.branches,
-      extensions: scm.extensions + [[$class: 'CleanCheckout']],
-      userRemoteConfigs: scm.userRemoteConfigs
-    ])
     stages {
         stage ('build')
         {
+          steps
+          {
+          checkout([
+          $class: 'GitSCM',
+          branches: scm.branches,
+          extensions: scm.extensions + [[$class: 'CleanCheckout']],
+          userRemoteConfigs: scm.userRemoteConfigs
+          echo "${scm.branches}"
+          ])
+          }
           /*awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${GIT_BRANCH}')*/
         }
         stage('test')
