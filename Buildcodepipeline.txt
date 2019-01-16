@@ -19,11 +19,13 @@ pipeline {
         }
         stage('test')
         {
-           echo 'testing'
+          steps{
+           echo 'testing'}
         }
         stage('Deploy')
         {
-           echo 'Deploy'
+           steps{
+           echo 'Deploy'}
         }
         stage ('Notification') {
             steps {
