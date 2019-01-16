@@ -10,13 +10,14 @@ pipeline {
       branches: scm.branches,
       extensions: scm.extensions + [[$class: 'CleanCheckout']],
       userRemoteConfigs: scm.userRemoteConfigs
-      load "$JENKINS_HOME/.envvars
+      /*load "$JENKINS_HOME/.envvars */
       echo BRANCH="${GIT_BRANCH##*/}"
+      echo BRANCHes="${branches}"
     ])
     stages {
         stage ('build')
         {
-          awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${GIT_BRANCH}')
+          /*awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${GIT_BRANCH}')*/
         }
         stage('test')
         {
