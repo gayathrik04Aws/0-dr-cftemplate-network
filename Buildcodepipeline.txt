@@ -39,7 +39,7 @@ pipeline {
                 awsRegion:'us-east-1',
                 awsSecretKey:'test',
                 functionName:"ses-prod-sendemails",
-                payload:'{"recipients": ["gayathri@eduphoria.net", "lester@eduphoria.net"], "mailbody": "Check console output at -{$BUILD_URL} to view the results.","subject": "${JOB_NAME}-${BUILD_NUMBER}-' + currentBuild.currentResult + '","filterList": ["develop", "epic-flower-wishes", "epic-analysis-reporting", "epic-3429-eval-attach-document-dimensions", "epic-walkthrough-widget", "epic-online-testing", "epic-test-proctoring","origin/master"], "filterValue": "' + scmvars.GIT_BRANCH +'","sender": "sender@eduphoria.net"}',
+                payload:'{"recipients": ["gayathri@eduphoria.net"], "mailbody": "Check console output at -{$BUILD_URL} to view the results.","subject": "${JOB_NAME}-${BUILD_NUMBER}-' + currentBuild.currentResult + '","filterList": ["develop", "epic-flower-wishes", "epic-analysis-reporting", "epic-3429-eval-attach-document-dimensions", "epic-walkthrough-widget", "epic-online-testing", "epic-test-proctoring","origin/master"], "filterValue": "' + scmvars.GIT_BRANCH +'","sender": "sender@eduphoria.net"}',
                 synchronous:true,
                 useInstanceCredentials:true
                 ]
