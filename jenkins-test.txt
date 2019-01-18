@@ -20,7 +20,7 @@ pipeline {
             ])
             awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
                          credentialsType: 'jenkins',
-                         sourceControlType: 'project',
+                         sourceControlType: 'jenkins',
                          projectName: 'ses-pipeline-test',
                          region: 'us-east-1'
           }
