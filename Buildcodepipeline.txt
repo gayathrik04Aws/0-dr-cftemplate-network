@@ -1,25 +1,24 @@
 pipeline {
     agent any
     triggers{
-     cron('H/2 * * * *')
+     pollSCM('H/2 * * * *')
     }
-    node
-    {
-      checkout([
-      $class: 'GitSCM',
-      branches: scm.branches,
-      extensions: scm.extensions + [[$class: 'CleanCheckout']],
-      userRemoteConfigs: scm.userRemoteConfigs
-    ])
     stages {
         stage ('build')
         {
           def scmvars = checkout scm
           echo "${scmvars.GIT_BRANCH}"
+          checkout([
+          $class: 'GitSCM',
+          branches: scm.branches,
+          extensions: scm.extensions + [[$class: 'CleanCheckout']],
+          userRemoteConfigs: scm.userRemoteConfigs
+        ])
           awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${scmvars.GIT_BRANCH}'
         }
         stage('test')
         {
+
         }
         stage('Deploy')
         {}
