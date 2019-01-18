@@ -25,8 +25,8 @@ pipeline {
                          projectName: 'frontend',
                          region: 'us-east-1',
                          buildSpecFile: 'buildspec.yml',
-                         artifacts-type: 's3'
-                         artifacts-location:'static-devops.schoolobjects.com'
+                         artifacts-type: 's3',
+                         artifacts-location:'static-devops.schoolobjects.com',
                          override-artifact-name: 'true'
           }
         }
