@@ -16,7 +16,7 @@ pipeline {
             extensions: scm.extensions + [[$class: 'CleanCheckout']],
             userRemoteConfigs: scm.userRemoteConfigs
             ])
-            awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'keys', region: 'us-west-1', sourceControlType: 'jenkins'
+            awsCodeBuild projectName: 'OH-dr-cftemplates', credentialsType: 'keys', region: 'us-west-1', sourceControlType: 'jenkins'
           }
         }
         stage('test')
