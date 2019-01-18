@@ -25,9 +25,9 @@ pipeline {
                          projectName: 'frontend-jenkins',
                          region: 'us-east-1',
                          buildSpecFile: 'buildspec.yml',
-                         artifactstypeoverride: 'S3',
-                         artifactslocationoverride:'static-devops.schoolobjects.com',
-                         overrideartifactname: 'true'
+                         artifactTypeOverride: 'S3',
+                         artifactLocationOverride:'static-devops.schoolobjects.com',
+                         overrideArtifactName: 'true'
           }
         }
         stage('test')
