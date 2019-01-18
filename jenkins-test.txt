@@ -1,7 +1,7 @@
 pipeline {
     agent any
     options([
-    overrideIndexTriggers(false)])
+    overrideIndexTriggers(false)];)
     /*triggers{
      pollSCM('H/2 * * * *')
     }*/
