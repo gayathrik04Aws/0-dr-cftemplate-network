@@ -26,8 +26,8 @@ pipeline {
                          region: 'us-east-1',
                          buildSpecFile: 'buildspec.yml',
                          artifactstypeoverride: 'S3',
-                         artifacts-location override:'static-devops.schoolobjects.com',
-                         override-artifact-name: 'true'
+                         artifactslocationoverride:'static-devops.schoolobjects.com',
+                         overrideartifactname: 'true'
           }
         }
         stage('test')
