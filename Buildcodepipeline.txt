@@ -6,6 +6,7 @@ pipeline {
     stages {
         stage ('build')
         {
+          steps{
           def scmvars = checkout scm
           echo "${scmvars.GIT_BRANCH}"
           checkout([
@@ -13,15 +14,24 @@ pipeline {
           branches: scm.branches,
           extensions: scm.extensions + [[$class: 'CleanCheckout']],
           userRemoteConfigs: scm.userRemoteConfigs
+          }
         ])
           awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${scmvars.GIT_BRANCH}'
         }
         stage('test')
         {
-
+          steps
+          {
+          echo 'test'
+          }
         }
         stage('Deploy')
-        {}
+        {
+          steps{
+          echo 'Deploy'
+
+          }
+        }
         /*stage ('Notification') {
             steps {
             script{
