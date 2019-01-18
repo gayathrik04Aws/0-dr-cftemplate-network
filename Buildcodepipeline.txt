@@ -7,8 +7,9 @@ pipeline {
         stage ('build')
         {
           steps{
+          script{
           def scmvars = checkout scm
-          echo "${scmvars.GIT_BRANCH}"
+          echo "${scmvars.GIT_BRANCH}"}
           checkout([
           $class: 'GitSCM',
           branches: scm.branches,
