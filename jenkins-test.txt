@@ -22,7 +22,6 @@ pipeline {
             awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
                          credentialsType: 'jenkins',
                          sourceControlType: 'jenkins',
-                         projectName: 'frontend-jenkins',
                          region: 'us-east-1',
                          buildSpecFile: 'buildspec.yml',
                          artifactTypeOverride: 'S3',
