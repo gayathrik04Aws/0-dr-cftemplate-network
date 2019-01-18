@@ -15,7 +15,7 @@ pipeline {
           userRemoteConfigs: scm.userRemoteConfigs
           ])
           }
-          /*awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${GIT_BRANCH}')*/
+          awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'CodeBuild Credentials', region: 'us-west-1', sourceControlType: '${GIT_BRANCH}')
         }
         stage('test')
         {
