@@ -1,8 +1,9 @@
 pipeline {
     agent any
-    triggers{
+    overrideIndexTriggers(false)
+    /*triggers{
      pollSCM('H/2 * * * *')
-    }
+    }*/
     stages {
         stage ('build')
           {
@@ -18,10 +19,9 @@ pipeline {
             ])
             awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
                          credentialsType: 'jenkins',
-                         sourceControlType: 'frontend',
+                         sourceControlType: 'project',
                          projectName: 'ses-pipeline-test',
                          region: 'us-east-1'
-            awsCodeBuild projectName: 'frontend-jenkins', credentialsType: 'keys', region: 'us-west-1', sourceControlType: "jenkins"
           }
         }
         stage('test')
