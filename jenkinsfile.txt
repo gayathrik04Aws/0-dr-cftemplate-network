@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+    options{
+    overrideIndexTriggers(false)
+    skipDefaultCheckout()
+    }
+    /*triggers{
+     pollSCM('H/2 * * * *')
+    }*/
+    stages {
+        stage ('build')
+          {
+            steps{
+            script{
+            def scmvars = checkout scm
+            echo "${scmvars.GIT_BRANCH}"}
+            checkout([
+            $class: 'GitSCM',
+            branches: scm.branches,
+            extensions: scm.extensions + [[$class: 'CleanCheckout']],
+            userRemoteConfigs: scm.userRemoteConfigs
+            ])
+            awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
+                         credentialsType: 'jenkins',
+                         sourceControlType: 'project',
+                         projectName: 'frontend-jenkins',
+                         region: 'us-east-1',
+                         buildSpecFile: 'buildspec.yml',
+                         artifactTypeOverride: 'S3',
+                         artifactLocationOverride:'static-devops.schoolobjects.com',
+                         overrideArtifactName: 'true'
+          }
+        }
+        stage('test')
+        {
+          steps
+          {
+          echo 'test'
+          }
+        }
+        stage('Deploy')
+        {
+          steps{
+          echo 'Deploy'
+
+          }
+        }
+        }
+        post {
+             always{
+            script{
+              def scmvars = checkout scm
+              echo "${scmvars.GIT_BRANCH}"
+
+            invokeLambda(
+                [
+                awsAccessKeyId:'Administrator',
+                awsRegion:'us-east-1',
+                awsSecretKey:'test',
+                functionName:"ses-prod-sendemails",
+                payload:'{"recipients": ["gayathri@eduphoria.net","Lester@eduphoria.net"],"mailbody": "Check console output at -{$BUILD_URL} to view the results.","subject": "${JOB_NAME}-${BUILD_NUMBER}-' + currentBuild.currentResult + '","filterList": ["develop", "epic-flower-wishes", "epic-analysis-reporting", "epic-3429-eval-attach-document-dimensions", "epic-walkthrough-widget", "epic-online-testing", "epic-test-proctoring", "jenkins-testing", "master"], "filterValue": "' + scmvars.GIT_BRANCH +'","sender": "sender@eduphoria.net"}',
+                synchronous:true,
+                useInstanceCredentials:true
+                ]
+                );
+                }
+                }
+        }
+
+}
