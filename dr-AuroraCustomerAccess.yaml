@@ -1,0 +1,158 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation template for Aurora customer's security groups.
+Resources:
+    CustomerA01:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora01
+          GroupName: customer-a01
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+           - Key: Name
+             Value: CustomerA01
+
+    CustomerA02:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora02
+          GroupName: customer-a02
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+           - Key: Name
+             Value: CustomerA02
+
+    CustomerA03:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora03
+          GroupName: customer-a03
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+           - Key: Name
+             Value: CustomerA03
+    CustomerA04:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora04
+          GroupName: customer-a04
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+           - Key: Name
+             Value: CustomerA04
+    CustomerA05:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora05
+          GroupName: customer-a05
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+           - Key: Name
+             Value: CustomerA05
+    CustomerA06:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora06
+          GroupName: customer-a06
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+           - Key: Name
+             Value: CustomerA06
+    CustomerA07:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora07
+          GroupName: customer-a07
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+            - Key: Name
+              Value: CustomerA07
+    CustomerA08:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora08
+          GroupName: customer-a08
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+            - Key: Name
+              Value: CustomerA08
+    CustomerA09:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora09
+          GroupName: customer-a09
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+            - Key: Name
+              Value: CustomerA09
+    CustomerA10:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+          GroupDescription: Customer Access to Aurora10
+          GroupName: customer-a10
+          VpcId:
+            Fn::ImportValue: !Sub 'dr-sofe-prod-1-VPCID'
+          Tags:
+            - Key: Name
+              Value: CustomerA10
+
+
+Outputs:
+  CustomerA01:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA01
+    Export:
+      Name: "dr-SgCustomerA01"
+  CustomerA02:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA02
+    Export:
+      Name: "dr-SgCustomerA02"
+  CustomerA03:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA03
+    Export:
+      Name: "dr-SgCustomerA03"
+  CustomerA04:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA04
+    Export:
+      Name: "dr-SgCustomerA04"
+  CustomerA05:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA05
+    Export:
+      Name: "dr-SgCustomerA05"
+  CustomerA06:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA06
+    Export:
+      Name: "dr-SgCustomerA06"
+  CustomerA07:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA07
+    Export:
+      Name: "dr-SgCustomerA07"
+  CustomerA08:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA08
+    Export:
+      Name: "dr-SgCustomerA08"
+  CustomerA09:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA09
+    Export:
+      Name: "dr-SgCustomerA09"
+  CustomerA10:
+    Description: The dbAuroraSG SecurityGroup
+    Value: !Ref  CustomerA10
+    Export:
+      Name: "dr-SgCustomerA10"
