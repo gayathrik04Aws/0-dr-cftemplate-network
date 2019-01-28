@@ -1,0 +1,8 @@
+{
+	"recipients": ["gayathri@eduphoria.net", "gayathrik04@gmail.com"],
+	"mailbody": "testing",
+	"subject": "build success",
+	"filterList": ["develop", "epic-flower-wishes", "epic-analysis-reporting", "epic-3429-eval-attach-document-dimensions", "epic-walkthrough-widget", "epic-online-testing", "epic-test-proctoring"],
+	"filterVlaue": "epic-flower-wishes",
+	"sender": "sender@eduphoria.net"
+}
