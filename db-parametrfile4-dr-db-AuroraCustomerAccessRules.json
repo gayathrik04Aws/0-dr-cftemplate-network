@@ -1,0 +1,5 @@
+{
+    "RegionId": "us-east-2",
+    "TemplateUrl": "https://s3.us-east-2.amazonaws.com/dr-use2-cf-templates-sept18/dr-use2-dbtemplates/dr-AuroraCustomerAccess.yaml",
+    "StackName": "dr-db-AuroraCustomerAccessRules"
+}
