@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+    options{
+    overrideIndexTriggers(false)
+    skipDefaultCheckout()
+    }
+
+    stages {
+        stage ('build')
+          {
+            steps{
+            script{
+            def scmvars = checkout scm
+            env.GIT_BRANCH = "${scmvars.GIT_BRANCH}"
+            echo env.GIT_BRANCH
+            final beforeColonTag = env.GIT_BRANCH.substring(1, env.GIT_BRANCH.indexOf('.'))
+            final artifactLocationOverride = "static1-staging.schoolobjects.com/".concat("${beforeColonTag}")
+            def url = "foo"
+            env.url = '[{url,'.concat("${artifactLocationOverride}").concat("}]")
+            env.Tag = "${beforeColonTag}"
+            echo "${beforeColonTag}"
+            echo "${artifactLocationOverride}"
+            echo env.Tag
+            echo env.url
+                   }
+            checkout([
+            $class: 'GitSCM',
+            userRemoteConfigs: scm.userRemoteConfigs,
+            branches: [[name: 'refs/tags/**']]
+            ])
+            awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
+                         credentialsType: 'jenkins',
+                         sourceControlType: 'project',
+                         projectName: 'frontend-jenkins',
+                         sourceLocationOverride:'https://github.com/eduphoria/frontend-infrastructure.git',
+                         region: 'us-east-1',
+                         envVariables:env.url,
+                         sourceVersion:env.GIT_BRANCH,
+                         buildSpecFile: 'buildspec.yml',
+                         artifactTypeOverride: 'S3',
+                         artifactLocationOverride:'static1-staging.schoolobjects.com',
+                         artifactPathOverride:env.Tag,
+                         artifactNameOverride:'/',
+                         artifactEncryptionDisabledOverride:'True'
+
+          }
+        }
+        }
+        post {
+             always{
+            script{
+              def scmvars = checkout scm
+                }
+                }
+        }
+
+}
