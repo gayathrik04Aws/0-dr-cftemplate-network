@@ -1,0 +1,114 @@
+pipeline {
+    agent any
+
+    options {
+        overrideIndexTriggers(false)
+        skipDefaultCheckout()
+    }
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
+    stages {
+        stage ('build') {
+            steps {
+                echo "<<< BUILD >>>"
+                script {
+                    def scmvars = checkout scm
+                    env.GIT_BRANCH = "${scmvars.GIT_BRANCH}"
+                    env.url = '[{STATIC_ASSETS_PATH,'.concat("https://s3.amazonaws.com/static-staging.schoolobjects.com/${env.GIT_BRANCH}/").concat("}]")
+                    echo "env.GIT_BRANCH: ${env.GIT_BRANCH}"
+                    echo "env.url: ${env.url}"
+                }
+
+                // checkout([
+                //     $class: 'GitSCM',
+                //     branches: scm.branches,
+                //     extensions: scm.extensions + [[$class: 'CleanCheckout']],
+                //     userRemoteConfigs: scm.userRemoteConfigs
+                // ])
+
+                awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
+                             credentialsType: 'jenkins',
+                             sourceControlType: 'project',
+                             projectName: 'frontend-jenkins',
+                             region: 'us-east-1',
+                             envVariables: env.url,
+                             sourceVersion:env.GIT_BRANCH,
+                             buildSpecFile: 'buildspec.yml',
+                             artifactTypeOverride: 'S3',
+                             artifactLocationOverride:'static-staging.schoolobjects.com',
+                             artifactPathOverride:env.GIT_BRANCH,
+                             artifactNameOverride:'/',
+                             artifactEncryptionDisabledOverride:'True'
+            }
+        }
+
+        stage('update') {
+            steps {
+                echo '<<< UDPATE >>>'
+
+                invokeLambda([
+                    awsAccessKeyId: '',
+                    awsSecretKey: '',
+                    useInstanceCredentials: true,
+                    awsRegion: 'us-east-1',
+                    functionName: "s3-prod-update_metadata",
+                    payload: "{\"bucket\": \"static-staging.schoolobjects.com\", \"prefix\": \"${env.GIT_BRANCH}\"}",
+                    synchronous: true
+                ])
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                echo "<<< POST >>>"
+                def scmvars = checkout scm
+                echo "${scmvars.GIT_BRANCH}"
+
+                invokeLambda([
+                    awsAccessKeyId: 'Administrator',
+                    awsRegion: 'us-east-1',
+                    awsSecretKey: 'test',
+                    functionName: "ses-prod-sendemails",
+                    payload: '{"recipients": ["gayathri@eduphoria.net"],"mailbody": "Check console output at -{$BUILD_URL} to view the results.","subject": "${JOB_NAME}-${BUILD_NUMBER}-' + currentBuild.currentResult + '","filterList": ["develop", "epic-flower-wishes", "epic-analysis-reporting", "epic-3429-eval-attach-document-dimensions", "epic-walkthrough-widget", "epic-online-testing", "epic-test-proctoring", "jenkins-testing", "master"], "filterValue": "' + scmvars.GIT_BRANCH +'","sender": "infrastructure@eduphoria.net"}',
+                    synchronous: true,
+                    useInstanceCredentials: true
+                ]);
+              def (job, tag) = "${JOB_NAME}".split('/');
+              def color = "danger"
+             if ("${currentBuild.currentResult}" == 'SUCCESS')
+          	{
+              def attachments = [
+              [
+            	text: "URL: ${JOB_NAME} with buildnumber ${BUILD_NUMBER}" + "(<${BUILD_URL}|Open>)",
+            	fallback: "Frontend build notification",
+                pretext:"Jenkins notification for frontend build: ${BUILD_NUMBER}",
+                title:"Job: ${JOB_NAME}",
+                color: "${color}",
+                fields: [[
+
+                    title: "Branch",
+                    value: "${tag}",
+
+            ],[
+
+                    title: "Result",
+                    value: "${currentBuild.currentResult}"
+
+            ]
+              ]
+
+            ]]
+              slackSend(channel: "@gayathri", attachments:attachments )
+            //slackSend (channel: "frontend-notifications", message: "Job: ${JOB_NAME} with buildnumber ${BUILD_NUMBER} was"+":"+ "${currentBuild.currentResult}" + "(<${BUILD_URL}|Open>)", sendAsText: true)
+            //slackSend (color: '#BADA55',channel: "@gayathri", message: "Job: ${JOB_NAME} with buildnumber ${BUILD_NUMBER} was"+":"+ "${currentBuild.currentResult}" + "(<${BUILD_URL}|Open>)", sendAsText: true)
+            }
+            }
+
+        }
+    }
+}

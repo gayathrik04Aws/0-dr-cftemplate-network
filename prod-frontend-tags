@@ -1,0 +1,144 @@
+pipeline {
+    agent any
+    options {
+        overrideIndexTriggers(false)
+        skipDefaultCheckout()
+    }
+
+    stages {
+        stage ('pre') {
+            steps {
+                echo "<<< PRE >>>"
+
+                script {
+                    def scmvars = checkout scm
+                    env.GIT_BRANCH = "${scmvars.GIT_BRANCH}"
+                    echo "env.GIT_BRANCH: ${env.GIT_BRANCH}"
+                    final beforeColonTag = env.GIT_BRANCH.substring(1, env.GIT_BRANCH.indexOf('.'))
+                    final artifactLocationOverride = "https://static.schoolobjects.com/".concat("${beforeColonTag}/")
+                    env.url = '[{STATIC_ASSETS_PATH,'.concat("${artifactLocationOverride}").concat("}]")
+                    env.Tag = "${beforeColonTag}"
+                    echo "beforeColonTag: ${beforeColonTag}"
+                    echo "artifactLocationOverride: ${artifactLocationOverride}"
+                    echo "env.Tag: ${env.Tag}"
+                    echo "env.url: ${env.url}"
+                }
+            }
+        }
+
+        stage ('build') {
+            steps {
+                echo "<<< BUILD >>>"
+
+                // checkout([
+                //     $class: 'GitSCM',
+                //     userRemoteConfigs: scm.userRemoteConfigs,
+                //     branches: [[name: 'refs/tags/**']]
+                // ])
+
+                awsCodeBuild credentialsId: '276b4d08-c275-4058-8d49-76d06a4883bd',
+                             credentialsType: 'jenkins',
+                             sourceControlType: 'project',
+                             projectName: 'frontend-jenkins',
+                             sourceLocationOverride: 'https://github.com/eduphoria/frontend.git',
+                             region: 'us-east-1',
+                             envVariables: env.url,
+                             sourceVersion: env.GIT_BRANCH,
+                             buildSpecFile: 'buildspec.yml',
+                             artifactTypeOverride: 'S3',
+                             artifactLocationOverride: 'static.schoolobjects.com',
+                             artifactPathOverride: env.Tag,
+                             artifactNameOverride: '/',
+                             artifactEncryptionDisabledOverride: 'True'
+            }
+        }
+
+        stage ('update') {
+            steps {
+                echo "<<< UPDATE >>>"
+
+                invokeLambda([
+                    awsAccessKeyId: '',
+                    awsSecretKey: '',
+                    useInstanceCredentials: true,
+                    awsRegion: 'us-east-1',
+                    functionName: "s3-prod-update_metadata",
+                    payload: "{\"bucket\": \"static.schoolobjects.com\", \"prefix\": \"${env.Tag}\"}",
+                    synchronous: true
+                ])
+            }
+        }
+       stage('cloudfrontinvalidation')
+      {
+         steps
+        {
+
+          echo "<<< CLOUDFRONT >>>"
+          script {
+                sh "aws configure set preview.cloudfront true"
+				validId = sh(script:"aws cloudfront create-invalidation --distribution-id 'E2S5OXHR45APDY' --paths '/${env.Tag}/*\' --output json | egrep Id | awk -F'\"' '{ print \$4}'",returnStdout:true).toString().trim()
+                //validid = sh(script:"date",returnStdout:true).toString().trim()
+                //validId = readFile 'outFile'
+                //echo "gk ${validId}"
+                sh "aws cloudfront wait invalidation-completed --id ${validId} --distribution-id 'E2S5OXHR45APDY'"
+            }
+
+          }
+
+      }
+    }
+
+    post {
+        /*success {
+            echo "<<< POST >>>"
+
+            script {
+                // def scmvars = checkout scm
+                sh "aws configure set preview.cloudfront true"
+                sh "aws cloudfront create-invalidation --distribution-id E2S5OXHR45APDY --paths /${env.Tag}/*"
+            }
+        }*/
+      always {
+        echo "<<< POST >>>"
+        //slackSend (channel: "frontend-notifications", message: "Job: ${JOB_NAME} with buildnumber ${BUILD_NUMBER} was"+":"+ "${currentBuild.currentResult}" + "(<${BUILD_URL}|Open>)", sendAsText: true)
+        script
+        {
+           def (job, tag) = "${JOB_NAME}".split('/');
+           def color = "danger"
+           if ("${currentBuild.currentResult}" == 'SUCCESS')
+          	{
+              color = "#00ff00"
+            }
+
+            /*def attachments = [
+              [
+            	text: "Job: ${JOB_NAME} with buildnumber ${BUILD_NUMBER} was"+":"+ "${currentBuild.currentResult}" + "(<${BUILD_URL}|Open>)",
+            	fallback: "Fallback",
+                color: "${color}"]]*/
+           def attachments = [
+              [
+            	text: "URL: ${JOB_NAME} with buildnumber ${BUILD_NUMBER}" + "(<${BUILD_URL}|Open>)",
+            	fallback: "Frontend build notification",
+                pretext:"Jenkins notification for frontend build: ${BUILD_NUMBER}",
+                title:"Job: ${JOB_NAME}",
+                color: "${color}",
+                fields: [[
+
+                    title: "Tag",
+                    value: "${tag}",
+
+            ],[
+
+                    title: "Result",
+                    value: "${currentBuild.currentResult}"
+
+            ]
+              ]
+
+            ]]
+            slackSend(channel: "@gayathri", attachments:attachments )
+           //slackSend(channel: "frontend-notifications", attachments:attachments )
+         }
+      }
+    }
+}
