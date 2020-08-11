@@ -1,0 +1,47 @@
+<?xml version=`"1.0`"?>
+
+<config>
+
+<Roles>app;task;</Roles>
+
+<Pooling>false</Pooling>
+
+<DatabaseServer>sosec-cluster.cluster-c0whpatrsep7.us-east-1.rds.amazonaws.com</DatabaseServer>
+
+<DatabaseName>sosec</DatabaseName>
+
+<DatabaseUser>3duR00t</DatabaseUser>
+
+<DatabasePassword>RcwqFgprG7Ont8G05s4EangN</DatabasePassword>
+
+<DataCustomString>False</DataCustomString>
+
+<DatabaseConnection>Database = sosec;Data Source = sosec-cluster.cluster-c0whpatrsep7.us-east-1.rds.amazonaws.com;User Id = '3duR00t'</DatabaseConnection>
+
+<SettingsV2Migrated>True</SettingsV2Migrated>
+
+<InstalledFontsRight6>True</InstalledFontsRight6>
+
+<MemcachedInstances>0</MemcachedInstances>
+
+<ForceInstallMemcached>True</ForceInstallMemcached>
+
+<ServerId>fc428759-d3c2-4dc7-9060-17ec54111c8b</ServerId>
+
+<RestartedForFonts3>True</RestartedForFonts3>
+
+<Dirty>true</Dirty>
+
+<WaitForUpdateServer>True</WaitForUpdateServer>
+
+<EnableReadSlaves>True</EnableReadSlaves>
+
+<IsAWS>True</IsAWS>
+
+<UpdateBranch>AWSBeta</UpdateBranch>
+
+<LastExpand>5/16/2018 9:28:29 PM</LastExpand>
+
+<SecureDatabasePassword>n/eymi7y7CEi0x/KXsiUa8i6HUvv28VFFBirBrouqCTaAjGfqs2aXLDks2bV79Ki3Sq1wcGOzv5Drrzfh4NmgA==</SecureDatabasePassword>
+
+</config>

@@ -1,0 +1,3 @@
+<powershell>
+  Set-Content -Path 'C:\Program Files\SchoolObjects\PoolConfiguration\PoolConfiguration.xml' -Value "${content_file}"
+</powershell>
